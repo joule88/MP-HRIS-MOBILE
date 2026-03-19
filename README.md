@@ -57,5 +57,10 @@ Proyek mengikuti pola clean architecture sederhana di Flutter:
 - **Style**: Soft shadows, rounded corners (Bento Grid), dan micro-animations.
 - **Theme**: Konfigurasi tema utama tersedia di `lib/theme.dart`.
 
+## 🛡️ Quality Assurance (QA) & Testing
+
+Sistem mobile ini terintegrasi dengan modul backend. Untuk skenario pengujian lengkap (termasuk Matriks Role & Isolasi Data), silakan merujuk ke panduan utama di:
+👉 **[PANDUAN QA (Web Project)](file:///c:/xampp/htdocs/mpg-hris/QA_GUIDE.md)**
+
 ---
 Developed by MPG Team.
