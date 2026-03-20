@@ -13,6 +13,7 @@ import 'providers/poin_provider.dart';
 import 'providers/signature_provider.dart';
 import 'providers/surat_izin_provider.dart';
 import 'providers/notification_provider.dart';
+import 'providers/setup_check_provider.dart';
 
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
@@ -36,6 +37,7 @@ import 'screens/profile/face_test_screen.dart';
 import 'screens/profile/signature_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
 import 'screens/documents/surat_izin_screen.dart';
+import 'screens/onboarding/onboarding_check_screen.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/cache_manager.dart';
@@ -72,6 +74,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SignatureProvider()),
         ChangeNotifierProvider(create: (_) => SuratIzinProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => SetupCheckProvider()),
       ],
       child: MaterialApp(
         title: 'MPG HRIS',
@@ -98,6 +101,7 @@ class MyApp extends StatelessWidget {
           '/pengajuan/izin': (context) => const IzinFormScreen(),
           '/pengajuan/lembur': (context) => const LemburFormScreen(),
           '/onboarding/face-enrollment': (context) => const FaceEnrollmentScreen(),
+          '/onboarding/check': (context) => const OnboardingCheckScreen(),
           '/poin/usage': (context) => const PointUsageScreen(),
           '/poin/history': (context) => const PoinHistoryScreen(),
           '/notification': (context) => const NotificationScreen(),

@@ -11,7 +11,9 @@ import '../../providers/signature_provider.dart';
 import '../../widgets/atoms/custom_button.dart';
 
 class SignatureScreen extends StatefulWidget {
-  const SignatureScreen({Key? key}) : super(key: key);
+  final bool isOnboarding;
+
+  const SignatureScreen({this.isOnboarding = false, Key? key}) : super(key: key);
 
   @override
   State<SignatureScreen> createState() => _SignatureScreenState();
@@ -114,7 +116,13 @@ class _SignatureScreenState extends State<SignatureScreen> {
               behavior: SnackBarBehavior.floating,
             ),
           );
-          if (success) _clearCanvas();
+          if (success) {
+            if (widget.isOnboarding && mounted) {
+              Navigator.pushReplacementNamed(context, '/home');
+            } else {
+              _clearCanvas();
+            }
+          }
         }
       }
     } catch (e) {
@@ -173,10 +181,12 @@ class _SignatureScreenState extends State<SignatureScreen> {
         backgroundColor: AppTheme.bgWhite,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: widget.isOnboarding
+            ? const SizedBox.shrink()
+            : IconButton(
+                icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
+                onPressed: () => Navigator.pop(context),
+              ),
       ),
       body: Consumer<SignatureProvider>(
         builder: (context, provider, _) {

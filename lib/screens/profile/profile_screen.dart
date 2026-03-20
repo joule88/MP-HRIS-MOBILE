@@ -330,14 +330,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               icon: Icons.face,
                               label: "Registrasi Wajah",
                               onTap: () => Navigator.pushNamed(context, '/onboarding/face-enrollment'),
-                              trailingText: context.watch<FaceProvider>().faceStatus['is_registered'] == true
-                                  ? "Terdaftar"
-                                  : "Belum Terdaftar",
-                              trailingColor: context.watch<FaceProvider>().faceStatus['is_registered'] == true
-                                  ? AppTheme.statusGreen
-                                  : AppTheme.statusRed,
-                            ),
-                            if (context.watch<FaceProvider>().faceStatus['is_registered'] == true)
+                               trailingText: context.watch<FaceProvider>().faceStatus2['is_registered'] == true
+                                   ? "Terdaftar"
+                                   : "Belum Terdaftar",
+                               trailingColor: context.watch<FaceProvider>().faceStatus2['is_registered'] == true
+                                   ? AppTheme.statusGreen
+                                   : AppTheme.statusRed,
+                             ),
+                             if (context.watch<FaceProvider>().faceStatus2['is_registered'] == true)
                               _buildActionItem(
                                 icon: Icons.face_retouching_natural,
                                 label: "Test Pengenalan Wajah",

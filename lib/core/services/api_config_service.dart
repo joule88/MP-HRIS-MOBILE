@@ -6,7 +6,7 @@ class ApiConfigService {
   static const String _selectedPresetKey = 'selected_preset';
 
   static const Map<String, String> presets = {
-    'current_ip': 'http://192.168.1.7:8000/api',
+    'current_ip': 'http://192.168.1.4:8000/api',
     'hostname': 'http://LAPTOP-I0SUKSKL:8000/api',
     'emulator': 'http://10.0.2.2:8000/api',
     'custom': '',

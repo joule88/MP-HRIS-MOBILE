@@ -42,7 +42,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     
     final token = CacheManager.authBox.get('auth_token');
     if (token != null && token.toString().isNotEmpty) {
-      Navigator.pushReplacementNamed(context, '/home');
+      Navigator.pushReplacementNamed(context, '/onboarding/check');
     } else {
       Navigator.pushReplacementNamed(context, '/login');
     }
