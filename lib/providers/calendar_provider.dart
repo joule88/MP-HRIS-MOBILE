@@ -15,7 +15,6 @@ class CalendarProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   Future<void> fetchMonthlySchedule(int month, int year) async {
-    print("--- FETCHING JADWAL BULAN $month TAHUN $year ---");
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -23,9 +22,7 @@ class CalendarProvider extends ChangeNotifier {
     try {
       final result = await _repository.getMonthlySchedule(month, year);
       _schedules = result;
-      print("--- SUKSES: DAPAT ${_schedules.length} DATA ---");
     } catch (e) {
-      print("--- ERROR: $e ---");
       _errorMessage = e.toString();
       _schedules = [];
     } finally {

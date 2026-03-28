@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/error_handler.dart';
 import '../../../core/theme.dart';
 import '../../../widgets/atoms/custom_button.dart';
 import '../../../widgets/atoms/custom_text_field.dart';
@@ -39,9 +40,7 @@ class _CutiFormScreenState extends State<CutiFormScreen> {
 
   void _handleSubmit() async {
     if (_startDate == null || _endDate == null || _reasonController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Semua field wajib diisi")),
-      );
+      ErrorHandler.showWarning('Semua field wajib diisi');
       return;
     }
 
@@ -53,9 +52,7 @@ class _CutiFormScreenState extends State<CutiFormScreen> {
 
     if (success && mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Pengajuan Cuti Berhasil")),
-      );
+      ErrorHandler.showSuccess('Pengajuan Cuti Berhasil');
     }
   }
 

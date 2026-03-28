@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/error_handler.dart';
 import '../../core/theme.dart';
 import '../../providers/home_provider.dart';
 import '../../providers/poin_provider.dart';
@@ -135,12 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ).then((result) {
                       if (result != null && result['success'] == true) {
                         provider.fetchDashboardData();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(result['message'] ?? 'Presensi berhasil'),
-                            backgroundColor: AppTheme.statusGreen,
-                          ),
-                        );
+                        ErrorHandler.showSuccess(result['message'] ?? 'Presensi berhasil');
                       }
                     });
                   },

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/error_handler.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/fcm_service.dart';
 import '../../widgets/atoms/custom_text_field.dart';
 import '../../widgets/atoms/custom_button.dart';
 
@@ -32,14 +34,10 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (success && mounted) {
-        Navigator.pushReplacementNamed(context, '/onboarding/check');
+        await FcmService().initialize(context);
+        if (mounted) Navigator.pushReplacementNamed(context, '/onboarding/check');
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.read<AuthProvider>().errorMessage ?? "Login Failed"),
-            backgroundColor: AppTheme.statusRed,
-          ),
-        );
+        ErrorHandler.showError(context.read<AuthProvider>().errorMessage ?? 'Login Failed');
       }
     }
   }

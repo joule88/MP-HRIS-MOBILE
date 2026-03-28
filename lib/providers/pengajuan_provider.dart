@@ -36,52 +36,30 @@ class PengajuanProvider extends ChangeNotifier {
       if (selectedTabIndex == 2) status = 'rejected';
 
       final submissions = await _repository.getPengajuan(status: status);
-      print('📋 Submissions count: ${submissions.length}');
-
       final lemburResult = await _lemburRepository.getLemburHistory();
-      print('🔥 Lembur API result: $lemburResult');
 
       List<PengajuanModel> lemburList = [];
       if (lemburResult['success'] == true && lemburResult['data'] != null) {
-        print('✅ Lembur success = true');
         final dynamic lemburData = lemburResult['data'];
-        print('📦 Lembur data type: ${lemburData.runtimeType}');
-        print('📦 Lembur data: $lemburData');
 
         List rawData = [];
-
         if (lemburData is List) {
           rawData = lemburData;
-          print('✅ Detected as List, count: ${rawData.length}');
         } else if (lemburData is Map && lemburData['data'] != null) {
           rawData = lemburData['data'];
-          print('✅ Detected as Map with data, count: ${rawData.length}');
         }
-
-        print('🔍 Raw lembur count before filter: ${rawData.length}');
 
         lemburList = rawData
             .map((json) => PengajuanModel.fromLemburJson(json))
-            .where((item) {
-              print('🔍 Lembur item status: ${item.status}, target: $status');
-              return item.status == status;
-            })
+            .where((item) => item.status == status)
             .toList();
-
-        print('📊 Lembur count after filter: ${lemburList.length}');
-      } else {
-        print('❌ Lembur failed or no data');
-        print('   success: ${lemburResult['success']}');
-        print('   data: ${lemburResult['data']}');
       }
 
       listPengajuan = [...submissions, ...lemburList];
-      print('📊 Total pengajuan count: ${listPengajuan.length}');
       listPengajuan.sort((a, b) => b.tanggalPengajuan.compareTo(a.tanggalPengajuan));
 
-    } catch (e, stack) {
-      print('❌ Error in fetchPengajuan: $e');
-      print(stack);
+    } catch (e) {
+      // Gagal fetch pengajuan — abaikan error silently
     } finally {
       isLoading = false;
       notifyListeners();

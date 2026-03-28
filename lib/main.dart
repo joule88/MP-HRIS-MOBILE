@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
+import 'services/fcm_service.dart';
 import 'core/theme.dart';
 import 'core/error_handler.dart';
 import 'providers/auth_provider.dart';
@@ -31,8 +34,7 @@ import 'screens/onboarding/face_enrollment_screen.dart';
 import 'screens/poin/point_usage_screen.dart';
 import 'screens/poin/poin_history_screen.dart';
 import 'screens/notification/notification_screen.dart';
-import 'screens/salary/salary_estimator_screen.dart';
-import 'screens/api_settings_screen.dart';
+
 import 'screens/profile/face_test_screen.dart';
 import 'screens/profile/signature_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
@@ -44,15 +46,21 @@ import 'core/cache_manager.dart';
 import 'core/constants/api_url.dart';
 
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'services/reminder_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await CacheManager.init();
-
   await ApiUrl.initialize();
-
   await initializeDateFormatting('id_ID', null);
+
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+  tz.initializeTimeZones();
+  await ReminderService().initialize();
 
   runApp(const MyApp());
 }
@@ -105,8 +113,7 @@ class MyApp extends StatelessWidget {
           '/poin/usage': (context) => const PointUsageScreen(),
           '/poin/history': (context) => const PoinHistoryScreen(),
           '/notification': (context) => const NotificationScreen(),
-          '/salary/estimator': (context) => const SalaryEstimatorScreen(),
-          '/settings/api': (context) => const ApiSettingsScreen(),
+
           '/profile/face-test': (context) => const FaceTestScreen(),
           '/profile/signature': (context) => const SignatureScreen(),
           '/profile/edit': (context) => const EditProfileScreen(),

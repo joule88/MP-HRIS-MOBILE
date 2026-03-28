@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/error_handler.dart';
 import '../../core/theme.dart';
 import '../../models/presensi_model.dart';
 import '../../providers/attendance_provider.dart';
@@ -68,9 +69,7 @@ class _PresensiDetailSheetState extends State<PresensiDetailSheet> {
 
   Future<void> _handleResubmit() async {
     if (_keteranganController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Keterangan wajib diisi'), backgroundColor: Colors.red),
-      );
+      ErrorHandler.showWarning('Keterangan wajib diisi');
       return;
     }
 
@@ -85,23 +84,11 @@ class _PresensiDetailSheetState extends State<PresensiDetailSheet> {
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Presensi berhasil diajukan ulang!'),
-            backgroundColor: AppTheme.statusGreen,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
+        ErrorHandler.showSuccess('Presensi berhasil diajukan ulang!');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: AppTheme.statusRed,
-          ),
-        );
+        ErrorHandler.showError(e.toString().replaceAll('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import '../../providers/poin_provider.dart';
+import '../../core/error_handler.dart';
 import '../../core/theme.dart';
 import '../../widgets/atoms/custom_button.dart';
 import '../../widgets/atoms/custom_text_field.dart';
@@ -94,12 +95,7 @@ class _PointUsageScreenState extends State<PointUsageScreen> {
       });
 
       if (!hasSchedule && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(provider.errorMessage ?? 'Jadwal tidak ditemukan'),
-            backgroundColor: AppTheme.statusRed,
-          ),
-        );
+        ErrorHandler.showError(provider.errorMessage ?? 'Jadwal tidak ditemukan');
       }
     }
   }
@@ -205,17 +201,13 @@ class _PointUsageScreenState extends State<PointUsageScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_estimasiPoin <= 0 && _selectedJenisId != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Estimasi poin 0 atau tidak valid. Cek jam input.'), backgroundColor: AppTheme.statusRed),
-      );
+      ErrorHandler.showWarning('Estimasi poin 0 atau tidak valid. Cek jam input.');
       return;
     }
 
     final provider = context.read<PoinProvider>();
     if ((provider.totalPoin ?? 0) < _estimasiPoin) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Saldo poin tidak mencukupi'), backgroundColor: AppTheme.statusRed),
-      );
+      ErrorHandler.showWarning('Saldo poin tidak mencukupi');
       return;
     }
 
@@ -256,12 +248,7 @@ class _PointUsageScreenState extends State<PointUsageScreen> {
     if (result['success']) {
       _showSuccessDialog();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] ?? 'Gagal memproses permintaan'),
-          backgroundColor: AppTheme.statusRed,
-        ),
-      );
+      ErrorHandler.showError(result['message'] ?? 'Gagal memproses permintaan');
     }
   }
 

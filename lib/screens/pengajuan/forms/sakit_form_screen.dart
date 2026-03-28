@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/error_handler.dart';
 import '../../../core/theme.dart';
 import '../../../widgets/atoms/custom_button.dart';
 import '../../../widgets/atoms/custom_text_field.dart';
@@ -49,16 +50,12 @@ class _SakitFormScreenState extends State<SakitFormScreen> {
 
   void _handleSubmit() async {
     if (_startDate == null || _endDate == null || _diagnosisController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Tanggal dan diagnosis wajib diisi")),
-      );
+      ErrorHandler.showWarning('Tanggal dan diagnosis wajib diisi');
       return;
     }
 
     if (_isFileRequired && _uploadedFilePath == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Surat dokter wajib untuk sakit ≥ 2 hari")),
-      );
+      ErrorHandler.showWarning('Surat dokter wajib untuk sakit ≥ 2 hari');
       return;
     }
 
@@ -71,9 +68,7 @@ class _SakitFormScreenState extends State<SakitFormScreen> {
 
     if (success && mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Pengajuan Sakit Berhasil")),
-      );
+      ErrorHandler.showSuccess('Pengajuan Sakit Berhasil');
     }
   }
 
@@ -129,16 +124,12 @@ class _SakitFormScreenState extends State<SakitFormScreen> {
         });
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('File dipilih: ${result.files.single.name}')),
-          );
+          ErrorHandler.showInfo('File dipilih: ${result.files.single.name}');
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal memilih file')),
-        );
+        ErrorHandler.showError('Gagal memilih file');
       }
     }
   }

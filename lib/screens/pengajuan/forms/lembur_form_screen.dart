@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/error_handler.dart';
 import '../../../core/theme.dart';
 import '../../../widgets/atoms/custom_text_field.dart';
 import '../../../widgets/atoms/custom_button.dart';
@@ -94,9 +95,7 @@ class _LemburFormScreenState extends State<LemburFormScreen> {
 
       if (success && mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Pengajuan Lembur Berhasil Disimpan")),
-        );
+        ErrorHandler.showSuccess('Pengajuan Lembur Berhasil Disimpan');
       }
     }
   }

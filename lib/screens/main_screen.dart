@@ -1,7 +1,10 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:animations/animations.dart';
+import 'package:provider/provider.dart';
 import '../core/theme.dart';
+import '../providers/notification_provider.dart';
+import '../services/fcm_service.dart';
 import 'home/home_screen.dart';
 import 'profile/profile_screen.dart';
 import 'presensi/presensi_screen.dart';
@@ -14,7 +17,7 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
@@ -25,7 +28,31 @@ class _MainScreenState extends State<MainScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<NotificationProvider>().fetchUnreadCount();
+      FcmService().initialize(context);
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      context.read<NotificationProvider>().fetchUnreadCount();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       extendBody: true,
       body: PageTransitionSwitcher(

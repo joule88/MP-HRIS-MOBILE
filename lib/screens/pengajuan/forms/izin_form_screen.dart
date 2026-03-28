@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../../core/error_handler.dart';
 import '../../../core/theme.dart';
 import '../../../widgets/atoms/custom_button.dart';
 import '../../../widgets/atoms/custom_text_field.dart';
 import '../../../providers/pengajuan_provider.dart';
+import '../../../providers/home_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
@@ -58,9 +60,7 @@ class _IzinFormScreenState extends State<IzinFormScreen> {
 
     if (success && mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Pengajuan Izin Berhasil")),
-      );
+      ErrorHandler.showSuccess('Pengajuan Izin Berhasil');
     }
   }
 
@@ -95,16 +95,12 @@ class _IzinFormScreenState extends State<IzinFormScreen> {
         });
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('File dipilih: ${result.files.single.name}')),
-          );
+          ErrorHandler.showInfo('File dipilih: ${result.files.single.name}');
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal memilih file')),
-        );
+        ErrorHandler.showError('Gagal memilih file');
       }
     }
   }
@@ -114,6 +110,7 @@ class _IzinFormScreenState extends State<IzinFormScreen> {
     final pengajuanProvider = context.watch<PengajuanProvider>();
     final hasSignature = pengajuanProvider.hasSignature;
     final isLoading = pengajuanProvider.isLoading;
+    final sisaCuti = context.watch<HomeProvider>().sisaCuti;
 
     return Scaffold(
       backgroundColor: AppTheme.bgLight,
@@ -150,6 +147,51 @@ class _IzinFormScreenState extends State<IzinFormScreen> {
                   ],
                 ),
               ),
+
+            // Banner sisa cuti
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: sisaCuti > 0
+                    ? AppTheme.statusGreen.withValues(alpha: 0.08)
+                    : AppTheme.statusRed.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                border: Border.all(
+                  color: sisaCuti > 0
+                      ? AppTheme.statusGreen.withValues(alpha: 0.3)
+                      : AppTheme.statusRed.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    sisaCuti > 0 ? Icons.event_available : Icons.event_busy,
+                    color: sisaCuti > 0 ? AppTheme.statusGreen : AppTheme.statusRed,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: RichText(
+                      text: TextSpan(
+                        style: AppTheme.bodySmall.copyWith(
+                          color: sisaCuti > 0 ? AppTheme.statusGreen : AppTheme.statusRed,
+                        ),
+                        children: [
+                          const TextSpan(text: 'Sisa cuti Anda: '),
+                          TextSpan(
+                            text: '$sisaCuti hari',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          if (sisaCuti <= 0)
+                            const TextSpan(text: '. Kuota cuti Anda sudah habis.'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
             CustomTextField(
               label: "Tanggal Izin",

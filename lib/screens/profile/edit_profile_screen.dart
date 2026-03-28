@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/error_handler.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/atoms/custom_avatar.dart';
@@ -67,24 +68,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() => _isSaving = false);
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Profil berhasil diperbarui'),
-          backgroundColor: AppTheme.statusGreen,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
+      ErrorHandler.showSuccess('Profil berhasil diperbarui');
       Navigator.pop(context, true);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authProvider.errorMessage ?? 'Gagal memperbarui profil'),
-          backgroundColor: AppTheme.statusRed,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
+      ErrorHandler.showError(authProvider.errorMessage ?? 'Gagal memperbarui profil');
     }
   }
 

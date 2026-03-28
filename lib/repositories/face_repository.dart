@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../core/constants/api_url.dart';
 import '../core/cache_manager.dart';
-import '../core/error_handler.dart';
 
 class FaceRepository {
   Future<Map<String, dynamic>> enrollFace({

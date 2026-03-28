@@ -5,14 +5,14 @@ class QuickMenuCard extends StatelessWidget {
   final VoidCallback onPresensiTap;
   final VoidCallback onPengajuanTap;
   final VoidCallback onLemburTap;
-  final VoidCallback onSlipTap;
+  final VoidCallback onJadwalTap;
 
   const QuickMenuCard({
     Key? key,
     required this.onPresensiTap,
     required this.onPengajuanTap,
     required this.onLemburTap,
-    required this.onSlipTap,
+    required this.onJadwalTap,
   }) : super(key: key);
 
   @override
@@ -25,7 +25,7 @@ class QuickMenuCard extends StatelessWidget {
           _buildItem(context, Icons.fingerprint, "Presensi", AppTheme.primaryDark, onPresensiTap),
           _buildItem(context, Icons.assignment_outlined, "Pengajuan", Colors.orange, onPengajuanTap),
           _buildItem(context, Icons.access_time_filled, "Lembur", Colors.blue, onLemburTap),
-          _buildItem(context, Icons.receipt_long, "Slip Gaji", Colors.green, onSlipTap),
+          _buildItem(context, Icons.calendar_month_outlined, "Jadwal", Colors.teal, onJadwalTap),
         ],
       ),
     );

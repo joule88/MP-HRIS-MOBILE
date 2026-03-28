@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:hand_signature/signature.dart';
+import '../../core/error_handler.dart';
 import '../../core/theme.dart';
 import '../../providers/signature_provider.dart';
 import '../../widgets/atoms/custom_button.dart';
@@ -77,12 +78,7 @@ class _SignatureScreenState extends State<SignatureScreen> {
 
   Future<void> _saveSignature() async {
     if (!_hasDrawing) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Silakan gambar tanda tangan terlebih dahulu'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      ErrorHandler.showWarning('Silakan gambar tanda tangan terlebih dahulu');
       return;
     }
 
@@ -90,12 +86,7 @@ class _SignatureScreenState extends State<SignatureScreen> {
       final imageBytes = await _captureCanvas();
       if (imageBytes == null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Gagal mengkonversi tanda tangan'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          ErrorHandler.showError('Gagal mengkonversi tanda tangan');
         }
         return;
       }
@@ -107,15 +98,11 @@ class _SignatureScreenState extends State<SignatureScreen> {
         final success = await provider.uploadSignature(imageBytes);
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(success
-                  ? 'Tanda tangan berhasil disimpan!'
-                  : provider.errorMessage ?? 'Gagal menyimpan'),
-              backgroundColor: success ? AppTheme.statusGreen : AppTheme.statusRed,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          if (success) {
+            ErrorHandler.showSuccess('Tanda tangan berhasil disimpan!');
+          } else {
+            ErrorHandler.showError(provider.errorMessage ?? 'Gagal menyimpan');
+          }
           if (success) {
             if (widget.isOnboarding && mounted) {
               Navigator.pushReplacementNamed(context, '/home');
@@ -128,13 +115,7 @@ class _SignatureScreenState extends State<SignatureScreen> {
     } catch (e) {
       print('[Signature] Error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: AppTheme.statusRed,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        ErrorHandler.showError('Error: $e');
       }
     }
   }
@@ -162,12 +143,11 @@ class _SignatureScreenState extends State<SignatureScreen> {
     if (confirmed == true && mounted) {
       final success = await context.read<SignatureProvider>().deleteSignature();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(success ? 'Tanda tangan berhasil dihapus' : 'Gagal menghapus'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        if (success) {
+          ErrorHandler.showSuccess('Tanda tangan berhasil dihapus');
+        } else {
+          ErrorHandler.showError('Gagal menghapus');
+        }
       }
     }
   }

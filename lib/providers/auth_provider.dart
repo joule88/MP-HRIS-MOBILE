@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../repositories/auth_repository.dart';
 import '../../models/user_model.dart';
 import '../../core/cache_manager.dart';
+import '../../services/reminder_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _repository = AuthRepository();
@@ -129,6 +130,7 @@ class AuthProvider extends ChangeNotifier {
 
   void logout() {
     _user = null;
+    ReminderService().cancelAll();
     notifyListeners();
   }
 }

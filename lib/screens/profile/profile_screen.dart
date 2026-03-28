@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/error_handler.dart';
 import '../../core/theme.dart';
 import '../../widgets/atoms/custom_avatar.dart';
 import '../../widgets/organisms/change_password_dialog.dart';
@@ -109,13 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _copyToClipboard(String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$label berhasil disalin'),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ErrorHandler.showInfo('$label berhasil disalin');
   }
 
   String _formatTanggalIndonesia(String? dateStr) {

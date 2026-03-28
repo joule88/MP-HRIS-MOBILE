@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../models/user_model.dart';
+import '../../providers/notification_provider.dart';
 import '../atoms/custom_avatar.dart';
 
 class HomeHeader extends StatelessWidget {
   final UserModel user;
 
   const HomeHeader({
-    Key? key,
+    super.key,
     required this.user,
-  }) : super(key: key);
+  });
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -21,6 +23,8 @@ class HomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final unreadCount = context.watch<NotificationProvider>().unreadCount;
+
     return Container(
       padding: const EdgeInsets.all(AppTheme.spacingLg),
       decoration: BoxDecoration(
@@ -87,12 +91,40 @@ class HomeHeader extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: AppTheme.glassWhite20, width: 1),
                 ),
-                child: IconButton(
-                  icon: const Icon(Icons.notifications_none_rounded),
-                  color: Colors.white,
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/notification');
-                  },
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications_none_rounded),
+                      color: Colors.white,
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/notification');
+                      },
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 4,
+                        top: 4,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFef4444),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.primaryDark, width: 1.5),
+                          ),
+                          constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                          child: Text(
+                            unreadCount > 9 ? '9+' : '$unreadCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ],

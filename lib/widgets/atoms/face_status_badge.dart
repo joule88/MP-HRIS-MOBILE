@@ -39,7 +39,6 @@ class FaceStatusBadge extends StatelessWidget {
         text = "Verifikasi Ditolak";
         break;
       case FaceStatus.notEnrolled:
-      default:
         bgColor = AppTheme.textSecondary.withOpacity(0.1);
         textColor = AppTheme.textSecondary;
         icon = Icons.face;

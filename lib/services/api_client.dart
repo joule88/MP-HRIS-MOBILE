@@ -19,25 +19,15 @@ class ApiClient {
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         final token = CacheManager.authBox.get('auth_token');
-
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
-
-        print('[API Request] ${options.method} ${options.baseUrl}${options.path}');
         return handler.next(options);
       },
       onResponse: (response, handler) {
-        print('[API Response] ${response.statusCode} ${response.requestOptions.path}');
         return handler.next(response);
       },
       onError: (DioException e, handler) {
-        if (e.response != null) {
-          print('[API Error] ${e.response?.statusCode} ${e.requestOptions.path}');
-          print('[API Error Data] ${e.response?.data}');
-        } else {
-          print('[API Network Error] ${e.type}: ${e.message}');
-        }
         return handler.next(e);
       },
     ));

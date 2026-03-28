@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/error_handler.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../atoms/custom_button.dart';
@@ -29,9 +30,7 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
   Future<void> _handleSubmit() async {
     if (_formKey.currentState!.validate()) {
       if (_newPasswordController.text != _confirmPasswordController.text) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Password baru tidak cocok")),
-        );
+        ErrorHandler.showWarning('Password baru tidak cocok');
         return;
       }
 
@@ -44,16 +43,12 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
       if (success) {
         if (mounted) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Password berhasil diubah")),
-          );
+          ErrorHandler.showSuccess('Password berhasil diubah');
         }
       } else {
         if (mounted) {
           final error = context.read<AuthProvider>().errorMessage;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(error ?? "Gagal mengubah password")),
-          );
+          ErrorHandler.showError(error ?? 'Gagal mengubah password');
         }
       }
     }

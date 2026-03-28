@@ -2,8 +2,10 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import '../../core/error_handler.dart';
 import '../../core/theme.dart';
 import '../../providers/home_provider.dart';
 import '../../providers/attendance_provider.dart';
@@ -63,7 +65,11 @@ class _PresensiMapScreenState extends State<PresensiMapScreen> {
         if (errorMessage.startsWith("Exception: ")) {
           errorMessage = errorMessage.substring(11);
         }
-        _showErrorSnackBar(errorMessage);
+        if (errorMessage == 'Layanan lokasi (GPS) tidak aktif. Mohon nyalakan GPS Anda.') {
+          _showGpsDisabledDialog();
+        } else {
+          _showErrorSnackBar(errorMessage);
+        }
       }
     } finally {
       if (mounted) {
@@ -569,12 +575,7 @@ class _PresensiMapScreenState extends State<PresensiMapScreen> {
                     onPressed: () {
                       final reason = reasonController.text.trim();
                       if (reason.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Alasan wajib diisi!"),
-                            backgroundColor: AppTheme.statusRed,
-                          ),
-                        );
+                        ErrorHandler.showWarning('Alasan wajib diisi!');
                         return;
                       }
 
@@ -690,12 +691,7 @@ class _PresensiMapScreenState extends State<PresensiMapScreen> {
                     onPressed: () {
                       final reason = reasonController.text.trim();
                       if (reason.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Alasan wajib diisi!"),
-                            backgroundColor: AppTheme.statusRed,
-                          ),
-                        );
+                        ErrorHandler.showWarning('Alasan wajib diisi!');
                         return;
                       }
 
@@ -847,12 +843,47 @@ class _PresensiMapScreenState extends State<PresensiMapScreen> {
     );
   }
 
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppTheme.statusRed,
+  void _showGpsDisabledDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.location_off_rounded, color: AppTheme.statusRed, size: 28),
+            const SizedBox(width: 8),
+            Text("GPS Tidak Aktif", style: AppTheme.heading3),
+          ],
+        ),
+        content: Text(
+          "Layanan lokasi (GPS) tidak aktif. Mohon nyalakan GPS Anda di Pengaturan agar dapat mengambil lokasi kantor.",
+          style: AppTheme.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pop(context); // Kembali ke menu presensi
+            },
+            child: const Text("Batal"),
+          ),
+          CustomButton(
+            text: "Buka Pengaturan",
+            type: ButtonType.primary,
+            isFullWidth: false,
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await Geolocator.openLocationSettings();
+              // Jika user menyalakan dan kembali ke app, fetch locator lagi bisa dipicu manual dgn pencet reload
+            },
+          ),
+        ],
       ),
     );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ErrorHandler.showError(message);
   }
 }

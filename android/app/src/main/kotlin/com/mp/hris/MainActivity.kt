@@ -1,4 +1,4 @@
-package com.example.mpg_mobile
+package com.mp.hris
 
 import io.flutter.embedding.android.FlutterActivity
 
