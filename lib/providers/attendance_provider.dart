@@ -48,7 +48,9 @@ class AttendanceProvider extends ChangeNotifier {
       }
 
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.bestForNavigation,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.bestForNavigation,
+        ),
       );
 
       await updateLocation(position.latitude, position.longitude);
@@ -94,13 +96,28 @@ class AttendanceProvider extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     try {
-      historyList = await _repository.getHistory();
+      historyList = await _repository.getHistory(
+        month: selectedMonth,
+        year: selectedYear,
+      );
     } catch (e) {
       print('Error fetching history: $e');
     } finally {
       isLoading = false;
       notifyListeners();
     }
+  }
+
+  void setMonth(int month) {
+    selectedMonth = month;
+    notifyListeners();
+    fetchHistory();
+  }
+
+  void setYear(int year) {
+    selectedYear = year;
+    notifyListeners();
+    fetchHistory();
   }
 
   Future<bool> submitPresensi(String type, File photoFile) async {
@@ -137,11 +154,6 @@ class AttendanceProvider extends ChangeNotifier {
     }
   }
 
-  void setMonth(int month) {
-    selectedMonth = month;
-    fetchHistory();
-    notifyListeners();
-  }
 
   Future<bool> resubmitPresensi(int idPresensi, String keterangan) async {
     isLoading = true;

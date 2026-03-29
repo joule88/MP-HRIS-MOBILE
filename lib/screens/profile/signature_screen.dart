@@ -57,19 +57,18 @@ class _SignatureScreenState extends State<SignatureScreen> {
 
   Future<Uint8List?> _captureCanvas() async {
     try {
-      // If we want PNG, hand_signature has a way to export to image
-      final picture = _signatureController.toPicture(
+      final byteData = await _signatureController.toImage(
         width: 1080,
         height: 720,
         color: const Color(0xFF1E293B),
-        strokeWidth: 4.5,
+        background: Colors.white,
+        fit: true,
+        border: 20,
+        format: ImageByteFormat.png,
       );
 
-      
-      final image = await picture?.toImage(1080, 720);
-      if (image == null) return null;
-      final byteData = await image.toByteData(format: ImageByteFormat.png);
-      return byteData?.buffer.asUint8List();
+      if (byteData == null) return null;
+      return byteData.buffer.asUint8List();
     } catch (e) {
       print('[Signature] Capture error: $e');
       return null;

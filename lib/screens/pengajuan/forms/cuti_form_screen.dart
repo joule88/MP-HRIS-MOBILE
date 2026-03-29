@@ -44,6 +44,12 @@ class _CutiFormScreenState extends State<CutiFormScreen> {
       return;
     }
 
+    final jumlahHari = _endDate!.difference(_startDate!).inDays + 1;
+    if (jumlahHari > 3) {
+      ErrorHandler.showWarning('Pengajuan cuti maksimal 3 hari berturut-turut');
+      return;
+    }
+
     final success = await context.read<PengajuanProvider>().submitCuti({
       'tanggal_mulai': DateFormat('yyyy-MM-dd').format(_startDate!),
       'tanggal_selesai': DateFormat('yyyy-MM-dd').format(_endDate!),
@@ -79,12 +85,13 @@ class _CutiFormScreenState extends State<CutiFormScreen> {
 
   Future<void> _selectEndDate(DateTime minDate) async {
     final DateTime initialDate = _startDate ?? minDate;
+    final DateTime maxEndDate = initialDate.add(const Duration(days: 2));
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _endDate ?? initialDate,
+      initialDate: _endDate != null && _endDate!.isAfter(maxEndDate) ? initialDate : (_endDate ?? initialDate),
       firstDate: initialDate,
-      lastDate: DateTime(2100),
-      helpText: "Pilih Tanggal Selesai",
+      lastDate: maxEndDate,
+      helpText: "Pilih Tanggal Selesai (maks 3 hari)",
     );
     if (picked != null) {
       setState(() {
@@ -149,7 +156,7 @@ class _CutiFormScreenState extends State<CutiFormScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      "Cuti harus diajukan minimal 7 hari sebelum tanggal mulai",
+                      "Cuti harus diajukan minimal H-7 dan maksimal 3 hari berturut-turut",
                       style: AppTheme.bodySmall.copyWith(
                         color: AppTheme.primaryBlue,
                         fontWeight: FontWeight.w500,

@@ -38,7 +38,6 @@ import 'screens/notification/notification_screen.dart';
 import 'screens/profile/face_test_screen.dart';
 import 'screens/profile/signature_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
-import 'screens/documents/surat_izin_screen.dart';
 import 'screens/onboarding/onboarding_check_screen.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -48,6 +47,8 @@ import 'core/constants/api_url.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'services/reminder_service.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -85,6 +86,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SetupCheckProvider()),
       ],
       child: MaterialApp(
+        navigatorKey: navigatorKey,
         title: 'MPG HRIS',
         scaffoldMessengerKey: ErrorHandler.scaffoldMessengerKey,
         debugShowCheckedModeBanner: false,
@@ -117,7 +119,6 @@ class MyApp extends StatelessWidget {
           '/profile/face-test': (context) => const FaceTestScreen(),
           '/profile/signature': (context) => const SignatureScreen(),
           '/profile/edit': (context) => const EditProfileScreen(),
-          '/surat-izin': (context) => const SuratIzinScreen(),
         },
       ),
     );

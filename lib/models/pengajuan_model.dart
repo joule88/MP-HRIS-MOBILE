@@ -10,6 +10,12 @@ class PengajuanModel {
   final String? approvedAt;
   final String? jamMulai;
   final String? jamSelesai;
+  final String? lampiranUrl;
+  final bool hasSurat;
+  final String? idSurat;
+  final String? namaKompensasi;
+  final int? durasiMenit;
+  final int? jumlahPoin;
 
   PengajuanModel({
     required this.id,
@@ -23,6 +29,12 @@ class PengajuanModel {
     this.approvedAt,
     this.jamMulai,
     this.jamSelesai,
+    this.lampiranUrl,
+    this.hasSurat = false,
+    this.idSurat,
+    this.namaKompensasi,
+    this.durasiMenit,
+    this.jumlahPoin,
   });
 
   factory PengajuanModel.fromJson(Map<String, dynamic> json) {
@@ -40,6 +52,9 @@ class PengajuanModel {
       keterangan: json['alasan'] ?? '',
       status: _mapStatus(json['id_status']),
       approvedAt: json['approved_at'],
+      lampiranUrl: json['bukti_file_url'],
+      hasSurat: json['has_surat'] == true,
+      idSurat: json['id_surat']?.toString(),
     );
   }
 
@@ -58,6 +73,15 @@ class PengajuanModel {
       approvedAt: json['approved_at'],
       jamMulai: json['jam_mulai'],
       jamSelesai: json['jam_selesai'],
+      namaKompensasi: json['kompensasi'] != null
+          ? json['kompensasi']['nama_kompensasi']
+          : null,
+      durasiMenit: json['durasi_menit'] != null
+          ? int.tryParse(json['durasi_menit'].toString())
+          : null,
+      jumlahPoin: json['jumlah_poin'] != null
+          ? int.tryParse(json['jumlah_poin'].toString())
+          : null,
     );
   }
 

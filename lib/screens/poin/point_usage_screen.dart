@@ -317,7 +317,12 @@ class _PointUsageScreenState extends State<PointUsageScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await context.read<PoinProvider>().loadExpiringPoints();
+        },
+        child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(AppTheme.spacingMd),
         child: Form(
           key: _formKey,
@@ -567,6 +572,7 @@ class _PointUsageScreenState extends State<PointUsageScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

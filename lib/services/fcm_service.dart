@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../core/theme.dart';
 import '../providers/notification_provider.dart';
 import '../repositories/notifikasi_repository.dart';
+import '../main.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
@@ -18,7 +19,12 @@ class FcmService {
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   final NotifikasiRepository _repository = NotifikasiRepository();
 
+  bool _initialized = false;
+
   Future<void> initialize(BuildContext context) async {
+    if (_initialized) return;
+    _initialized = true;
+
     final settings = await _messaging.requestPermission(
       alert: true,
       badge: true,
@@ -29,12 +35,7 @@ class FcmService {
     const initSettings = InitializationSettings(android: androidSettings);
     await _localNotifications.initialize(
       settings: initSettings,
-      onDidReceiveNotificationResponse: (details) {
-        if (context.mounted) {
-          Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
-          Navigator.of(context).pushNamed('/notification');
-        }
-      },
+      onDidReceiveNotificationResponse: _onNotificationTap,
     );
 
     if (settings.authorizationStatus == AuthorizationStatus.denied) return;
@@ -53,14 +54,26 @@ class FcmService {
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((msg) {
-      if (context.mounted) _handleTap(context, msg);
+      _navigateToNotification();
     });
 
     final initial = await _messaging.getInitialMessage();
     if (initial != null) {
       Future.delayed(const Duration(seconds: 1), () {
-        if (context.mounted) _handleTap(context, initial);
+        _navigateToNotification();
       });
+    }
+  }
+
+  void _onNotificationTap(NotificationResponse details) {
+    _navigateToNotification();
+  }
+
+  void _navigateToNotification() {
+    final nav = navigatorKey.currentState;
+    if (nav != null) {
+      nav.pushNamedAndRemoveUntil('/home', (route) => false);
+      nav.pushNamed('/notification');
     }
   }
 
@@ -106,7 +119,7 @@ class FcmService {
         color: color,
         onTap: () {
           entry.remove();
-          Navigator.of(context).pushNamed('/notification');
+          _navigateToNotification();
         },
         onDismiss: () => entry.remove(),
       ),
@@ -137,12 +150,8 @@ class FcmService {
       title: title,
       body: body,
       notificationDetails: details,
+      payload: 'notification',
     );
-  }
-
-  void _handleTap(BuildContext context, RemoteMessage message) {
-    Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
-    Navigator.of(context).pushNamed('/notification');
   }
 }
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../models/pengajuan_model.dart';
 import '../atoms/badge_widget.dart';
+import 'surat_izin_detail_sheet.dart';
 import 'package:intl/intl.dart';
 
 class PengajuanDetailSheet extends StatelessWidget {
@@ -81,13 +82,15 @@ class PengajuanDetailSheet extends StatelessWidget {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXl)),
       child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
         decoration: const BoxDecoration(
           color: AppTheme.bgWhite,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
               child: Container(
@@ -100,7 +103,12 @@ class PengajuanDetailSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
             Row(
               children: [
                 Expanded(
@@ -209,6 +217,185 @@ class PengajuanDetailSheet extends StatelessWidget {
               ),
               const SizedBox(height: 8),
             ],
+
+            // Lampiran Section
+            if (pengajuan.lampiranUrl != null && pengajuan.lampiranUrl!.isNotEmpty) ...[
+              const Divider(height: 1, color: AppTheme.bgCard),
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.attach_file, size: 20, color: _jenisColor),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Lampiran / Bukti",
+                          style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
+                        ),
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () => _showFullImage(context, pengajuan.lampiranUrl!),
+                          child: Container(
+                            width: double.infinity,
+                            constraints: const BoxConstraints(maxHeight: 200),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                              border: Border.all(color: AppTheme.textTertiary.withValues(alpha: 0.2)),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                              child: Image.network(
+                                pengajuan.lampiranUrl!,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, progress) {
+                                  if (progress == null) return child;
+                                  return Container(
+                                    height: 120,
+                                    alignment: Alignment.center,
+                                    child: CircularProgressIndicator(
+                                      value: progress.expectedTotalBytes != null
+                                          ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
+                                          : null,
+                                      strokeWidth: 2,
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    height: 80,
+                                    alignment: Alignment.center,
+                                    color: AppTheme.bgCard,
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.broken_image_outlined, size: 32, color: AppTheme.textTertiary),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          "Gagal memuat lampiran",
+                                          style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          "Ketuk untuk memperbesar",
+                          style: AppTheme.bodySmall.copyWith(
+                            color: AppTheme.primaryBlue,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+
+            if (pengajuan.hasSurat && pengajuan.idSurat != null) ...[
+              const Divider(height: 1, color: AppTheme.bgCard),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => SuratIzinDetailSheet(idSurat: pengajuan.idSurat!),
+                    );
+                  },
+                  icon: const Icon(Icons.description_outlined, size: 20),
+                  label: const Text("Lihat Surat Izin"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryDark,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    ),
+                    elevation: 0,
+                    textStyle: AppTheme.labelLarge.copyWith(fontSize: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showFullImage(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: Center(
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.broken_image, color: Colors.white54, size: 48),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Gagal memuat gambar",
+                            style: AppTheme.bodyMedium.copyWith(color: Colors.white54),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Positioned(
+              top: MediaQuery.of(ctx).padding.top + 8,
+              right: 8,
+              child: IconButton(
+                onPressed: () => Navigator.pop(ctx),
+                icon: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, color: Colors.white, size: 22),
+                ),
+              ),
+            ),
           ],
         ),
       ),

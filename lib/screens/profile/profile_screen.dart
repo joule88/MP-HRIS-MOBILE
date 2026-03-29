@@ -349,11 +349,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               onTap: () => Navigator.pushNamed(context, '/profile/signature'),
                             ),
                             _buildActionItem(
-                              icon: Icons.description_outlined,
-                              label: "Surat Izin",
-                              onTap: () => Navigator.pushNamed(context, '/surat-izin'),
-                            ),
-                            _buildActionItem(
                               icon: Icons.settings_ethernet,
                               label: "Pengaturan Server",
                               onTap: () => Navigator.pushNamed(context, '/settings/api'),

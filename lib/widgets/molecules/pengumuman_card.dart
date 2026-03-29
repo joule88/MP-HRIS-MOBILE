@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../models/announcement_model.dart';
+import '../../screens/home/pengumuman_detail_screen.dart';
 import '../atoms/custom_avatar.dart';
 
 class PengumumanCard extends StatelessWidget {
@@ -27,7 +28,14 @@ class PengumumanCard extends StatelessWidget {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         child: InkWell(
-          onTap: onTap ?? () {},
+          onTap: onTap ?? () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PengumumanDetailScreen(pengumuman: pengumuman),
+              ),
+            );
+          },
           borderRadius: BorderRadius.circular(AppTheme.radiusLg),
           child: Padding(
             padding: const EdgeInsets.all(AppTheme.spacingMd),
@@ -35,7 +43,7 @@ class PengumumanCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CustomAvatar(
-            name: "HR",
+            name: pengumuman.namaPembuat,
              imageUrl: pengumuman.avatarUrl,
             size: 40,
             backgroundColor: AppTheme.primaryOrange.withOpacity(0.1),

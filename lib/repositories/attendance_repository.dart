@@ -84,9 +84,12 @@ class AttendanceRepository {
     }
   }
 
-  Future<List<PresensiHistoryModel>> getHistory() async {
+  Future<List<PresensiHistoryModel>> getHistory({required int month, required int year}) async {
     try {
-      final response = await _client.dio.get('${ApiUrl.baseUrl}/presensi/history');
+      final response = await _client.dio.get(
+        '${ApiUrl.baseUrl}/presensi/history',
+        queryParameters: {'month': month, 'year': year},
+      );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
         final List data = response.data['data']['data'] ?? [];

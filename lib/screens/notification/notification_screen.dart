@@ -4,6 +4,7 @@ import '../../core/theme.dart';
 import '../../providers/notification_provider.dart';
 import '../../models/notifikasi_model.dart';
 import '../../widgets/atoms/fade_in_up.dart';
+import 'notifikasi_detail_screen.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -79,6 +80,18 @@ class _NotificationScreenState extends State<NotificationScreen> {
     } catch (_) {
       return 'Lainnya';
     }
+  }
+
+  void _openDetail(NotifikasiModel item, NotificationProvider provider) {
+    if (!item.isRead) {
+      provider.markAsRead(item.id);
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => NotifikasiDetailScreen(notifikasi: item),
+      ),
+    );
   }
 
   @override
@@ -214,11 +227,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           child: Padding(
                             padding: const EdgeInsets.only(bottom: AppTheme.spacingSm),
                             child: GestureDetector(
-                              onTap: () {
-                                if (!item.isRead) {
-                                  provider.markAsRead(item.id);
-                                }
-                              },
+                              onTap: () => _openDetail(item, provider),
                               child: Container(
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
@@ -277,12 +286,23 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           const SizedBox(height: 5),
-                                          Text(
-                                            _relativeTime(item.createdAt),
-                                            style: AppTheme.bodySmall.copyWith(
-                                              color: AppTheme.textTertiary,
-                                              fontSize: 11,
-                                            ),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  _relativeTime(item.createdAt),
+                                                  style: AppTheme.bodySmall.copyWith(
+                                                    color: AppTheme.textTertiary,
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
+                                              ),
+                                              Icon(
+                                                Icons.chevron_right_rounded,
+                                                size: 16,
+                                                color: AppTheme.textTertiary.withValues(alpha: 0.5),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
@@ -305,3 +325,5 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 }
+
+
