@@ -270,6 +270,40 @@ class _PresensiDetailSheetState extends State<PresensiDetailSheet> {
 
                     const SizedBox(height: 20),
 
+                    // Foto Absensi
+                    if (history.fotoMasukUrl != null || history.fotoPulangUrl != null) ...[
+                      Text(
+                        "Foto Absensi",
+                        style: AppTheme.labelLarge.copyWith(color: AppTheme.textSecondary),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          if (history.fotoMasukUrl != null)
+                            Expanded(
+                              child: _buildFotoCard(
+                                context,
+                                label: "Masuk",
+                                imageUrl: history.fotoMasukUrl!,
+                                color: AppTheme.statusGreen,
+                              ),
+                            ),
+                          if (history.fotoMasukUrl != null && history.fotoPulangUrl != null)
+                            const SizedBox(width: 12),
+                          if (history.fotoPulangUrl != null)
+                            Expanded(
+                              child: _buildFotoCard(
+                                context,
+                                label: "Pulang",
+                                imageUrl: history.fotoPulangUrl!,
+                                color: AppTheme.primaryOrange,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+
                     _buildDetailRow(
                       icon: _statusIcon(history.statusMasuk),
                       iconColor: _statusColor(history.statusMasuk),
@@ -517,6 +551,161 @@ class _PresensiDetailSheetState extends State<PresensiDetailSheet> {
             style: AppTheme.labelLarge.copyWith(color: valueColor ?? AppTheme.textPrimary),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFotoCard(
+    BuildContext context, {
+    required String label,
+    required String imageUrl,
+    required Color color,
+  }) {
+    return GestureDetector(
+      onTap: () => _showFullImage(context, imageUrl, label),
+      child: Column(
+        children: [
+          Container(
+            height: 140,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              border: Border.all(color: color.withValues(alpha: 0.3)),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) return child;
+                  return Container(
+                    color: AppTheme.bgCard,
+                    alignment: Alignment.center,
+                    child: CircularProgressIndicator(
+                      value: progress.expectedTotalBytes != null
+                          ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
+                          : null,
+                      strokeWidth: 2,
+                      color: color,
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: AppTheme.bgCard,
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.broken_image_outlined, size: 28, color: AppTheme.textTertiary),
+                        const SizedBox(height: 4),
+                        Text(
+                          "Gagal memuat",
+                          style: AppTheme.bodySmall.copyWith(color: AppTheme.textTertiary, fontSize: 10),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: AppTheme.bodySmall.copyWith(color: color, fontWeight: FontWeight.w600, fontSize: 11),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFullImage(BuildContext context, String imageUrl, String label) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: Center(
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.broken_image, color: Colors.white54, size: 48),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Gagal memuat gambar",
+                            style: AppTheme.bodyMedium.copyWith(color: Colors.white54),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Positioned(
+              top: MediaQuery.of(ctx).padding.top + 8,
+              left: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                ),
+                child: Text(
+                  "Foto $label",
+                  style: AppTheme.labelMedium.copyWith(color: Colors.white),
+                ),
+              ),
+            ),
+            Positioned(
+              top: MediaQuery.of(ctx).padding.top + 8,
+              right: 8,
+              child: IconButton(
+                onPressed: () => Navigator.pop(ctx),
+                icon: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, color: Colors.white, size: 22),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

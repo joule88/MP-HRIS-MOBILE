@@ -78,6 +78,8 @@ class PresensiHistoryModel {
   final bool verifikasiWajah;
   final int? statusValidasi;
   final String? alasanPenolakan;
+  final String? fotoMasukUrl;
+  final String? fotoPulangUrl;
 
   PresensiHistoryModel({
     this.idPresensi,
@@ -94,6 +96,8 @@ class PresensiHistoryModel {
     this.verifikasiWajah = false,
     this.statusValidasi,
     this.alasanPenolakan,
+    this.fotoMasukUrl,
+    this.fotoPulangUrl,
   });
 
   factory PresensiHistoryModel.fromJson(Map<String, dynamic> json) {
@@ -123,6 +127,8 @@ class PresensiHistoryModel {
       verifikasiWajah: json['verifikasi_wajah'] ?? false,
       statusValidasi: json['status_validasi'],
       alasanPenolakan: json['alasan_penolakan'],
+      fotoMasukUrl: json['foto_masuk_url'],
+      fotoPulangUrl: json['foto_pulang_url'],
     );
   }
 }

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import '../../core/error_handler.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
@@ -46,9 +47,43 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       imageQuality: 80,
     );
     if (picked != null) {
-      setState(() {
-        _selectedPhoto = File(picked.path);
-      });
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: picked.path,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        compressQuality: 80,
+        maxWidth: 512,
+        maxHeight: 512,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Atur Foto Profil',
+            toolbarColor: AppTheme.primaryDark,
+            toolbarWidgetColor: Colors.white,
+            statusBarColor: AppTheme.primaryDark,
+            backgroundColor: AppTheme.primaryDark,
+            activeControlsWidgetColor: AppTheme.primaryBlue,
+            cropGridColor: Colors.white.withValues(alpha: 0.3),
+            cropFrameColor: Colors.white,
+            cropStyle: CropStyle.circle,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true,
+            hideBottomControls: false,
+          ),
+          IOSUiSettings(
+            title: 'Atur Foto Profil',
+            doneButtonTitle: 'Simpan',
+            cancelButtonTitle: 'Batal',
+            cropStyle: CropStyle.circle,
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+          ),
+        ],
+      );
+
+      if (croppedFile != null) {
+        setState(() {
+          _selectedPhoto = File(croppedFile.path);
+        });
+      }
     }
   }
 

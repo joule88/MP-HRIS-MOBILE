@@ -35,6 +35,7 @@ class AttendanceRepository {
     File photoFile, {
     String? keteranganLuarRadius,
     String? keteranganPulang,
+    String? alasanTelat,
   }) async {
     try {
       String fileName = photoFile.path.split('/').last;
@@ -51,6 +52,8 @@ class AttendanceRepository {
           'keterangan_luar_radius': keteranganLuarRadius,
         if (keteranganPulang != null)
           'keterangan_pulang': keteranganPulang,
+        if (alasanTelat != null)
+          'alasan_telat': alasanTelat,
       });
 
       final response = await _client.dio.post(

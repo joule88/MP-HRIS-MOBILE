@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../repositories/attendance_repository.dart';
 import '../models/presensi_model.dart';
@@ -21,6 +21,7 @@ class AttendanceProvider extends ChangeNotifier {
 
   String? reasonOutsideRadius;
   String? reasonEarlyCheckout;
+  String? reasonLateCheckin;
 
   Future<bool> getCurrentPosition() async {
     bool serviceEnabled;
@@ -92,6 +93,11 @@ class AttendanceProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setReasonLateCheckin(String? reason) {
+    reasonLateCheckin = reason;
+    notifyListeners();
+  }
+
   Future<void> fetchHistory() async {
     isLoading = true;
     notifyListeners();
@@ -137,11 +143,13 @@ class AttendanceProvider extends ChangeNotifier {
         photoFile,
         keteranganLuarRadius: !isWithinRadius ? reasonOutsideRadius : null,
         keteranganPulang: type == 'pulang' ? reasonEarlyCheckout : null,
+        alasanTelat: type == 'masuk' ? reasonLateCheckin : null,
       );
 
       if (success) {
         reasonOutsideRadius = null;
         reasonEarlyCheckout = null;
+        reasonLateCheckin = null;
       }
 
       return success;
@@ -175,6 +183,7 @@ class AttendanceProvider extends ChangeNotifier {
   void reset() {
     reasonOutsideRadius = null;
     reasonEarlyCheckout = null;
+    reasonLateCheckin = null;
     notifyListeners();
   }
 }

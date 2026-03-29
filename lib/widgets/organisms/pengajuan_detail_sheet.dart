@@ -75,6 +75,14 @@ class PengajuanDetailSheet extends StatelessWidget {
     }
   }
 
+  String _formatDurasi(int menit) {
+    final jam = menit ~/ 60;
+    final sisa = menit % 60;
+    if (jam > 0 && sisa > 0) return '$jam jam $sisa menit';
+    if (jam > 0) return '$jam jam';
+    return '$menit menit';
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isLembur = pengajuan.jenis.toLowerCase() == 'lembur';
@@ -176,6 +184,26 @@ class PengajuanDetailSheet extends StatelessWidget {
                 label: "Jam Lembur",
                 value: "${_formatTime(pengajuan.jamMulai)} - ${_formatTime(pengajuan.jamSelesai)}",
               ),
+              if (pengajuan.durasiMenit != null)
+                _buildInfoRow(
+                  icon: Icons.timer_outlined,
+                  label: "Durasi Lembur",
+                  value: _formatDurasi(pengajuan.durasiMenit!),
+                ),
+              const Divider(height: 1, color: AppTheme.bgCard),
+              const SizedBox(height: 14),
+              if (pengajuan.namaKompensasi != null)
+                _buildInfoRow(
+                  icon: Icons.card_giftcard_outlined,
+                  label: "Jenis Kompensasi",
+                  value: pengajuan.namaKompensasi!,
+                ),
+              if (pengajuan.jumlahPoin != null && pengajuan.jumlahPoin! > 0)
+                _buildInfoRow(
+                  icon: Icons.stars_rounded,
+                  label: "Poin Diperoleh",
+                  value: "+${pengajuan.jumlahPoin} Poin",
+                ),
             ] else ...[
               _buildInfoRow(
                 icon: Icons.date_range_outlined,

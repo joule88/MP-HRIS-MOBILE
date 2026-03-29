@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../core/theme.dart';
 
 class MapViewOrganism extends StatefulWidget {
@@ -23,99 +22,72 @@ class MapViewOrganism extends StatefulWidget {
   State<MapViewOrganism> createState() => _MapViewOrganismState();
 }
 
-class _MapViewOrganismState extends State<MapViewOrganism> with SingleTickerProviderStateMixin {
-  late AnimationController _pulseController;
+class _MapViewOrganismState extends State<MapViewOrganism> {
+  GoogleMapController? _mapController;
 
   @override
-  void initState() {
-    super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: false);
+  void didUpdateWidget(covariant MapViewOrganism oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.userLocation != null &&
+        widget.userLocation != oldWidget.userLocation &&
+        _mapController != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLng(widget.userLocation!),
+      );
+    }
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
+    _mapController?.dispose();
     super.dispose();
+  }
+
+  Set<Circle> _buildCircles() {
+    return {
+      Circle(
+        circleId: const CircleId('office_radius'),
+        center: widget.officeLocation,
+        radius: widget.radiusInMeters,
+        fillColor: widget.isWithinRadius
+            ? AppTheme.primaryBlue.withOpacity(0.1)
+            : AppTheme.statusRed.withOpacity(0.05),
+        strokeColor: widget.isWithinRadius ? AppTheme.primaryBlue : AppTheme.statusRed,
+        strokeWidth: 2,
+      ),
+    };
+  }
+
+  Set<Marker> _buildMarkers() {
+    return {
+      Marker(
+        markerId: const MarkerId('office'),
+        position: widget.officeLocation,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        infoWindow: const InfoWindow(title: 'Lokasi Kantor'),
+      ),
+    };
   }
 
   @override
   Widget build(BuildContext context) {
-    Widget mapContent = FlutterMap(
-      options: MapOptions(
-        initialCenter: widget.userLocation ?? widget.officeLocation,
-        initialZoom: 16.0,
-        interactionOptions: const InteractionOptions(
-          flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-        ),
+    final initialTarget = widget.userLocation ?? widget.officeLocation;
+
+    Widget mapContent = GoogleMap(
+      initialCameraPosition: CameraPosition(
+        target: initialTarget,
+        zoom: 16.0,
       ),
-      children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.example.mpg_mobile',
-        ),
-        CircleLayer(
-          circles: [
-            CircleMarker(
-              point: widget.officeLocation,
-              color: widget.isWithinRadius
-                  ? AppTheme.primaryBlue.withOpacity(0.1)
-                  : AppTheme.statusRed.withOpacity(0.05),
-              borderStrokeWidth: 2,
-              borderColor: widget.isWithinRadius ? AppTheme.primaryBlue : AppTheme.statusRed,
-              useRadiusInMeter: true,
-              radius: widget.radiusInMeters,
-            ),
-          ],
-        ),
-        MarkerLayer(
-          markers: [
-            if (widget.userLocation != null)
-              Marker(
-                point: widget.userLocation!,
-                width: 80,
-                height: 80,
-                child: AnimatedBuilder(
-                  animation: _pulseController,
-                  builder: (context, child) {
-                    return Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          width: 30 + (_pulseController.value * 50),
-                          height: 30 + (_pulseController.value * 50),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: (widget.isWithinRadius ? AppTheme.statusGreen : AppTheme.statusRed)
-                                .withOpacity(0.4 * (1.0 - _pulseController.value)),
-                          ),
-                        ),
-                        Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: widget.isWithinRadius ? AppTheme.statusGreen : AppTheme.statusRed,
-                            border: Border.all(color: Colors.white, width: 3),
-                            boxShadow: [
-                              BoxShadow(
-                                color: (widget.isWithinRadius ? AppTheme.statusGreen : AppTheme.statusRed).withOpacity(0.5),
-                                blurRadius: 8,
-                                spreadRadius: 2,
-                              )
-                            ]
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-          ],
-        ),
-      ],
+      circles: _buildCircles(),
+      markers: _buildMarkers(),
+      myLocationEnabled: true,
+      myLocationButtonEnabled: false,
+      zoomControlsEnabled: false,
+      mapToolbarEnabled: false,
+      rotateGesturesEnabled: false,
+      onMapCreated: (controller) {
+        _mapController = controller;
+      },
     );
 
     if (widget.isFullscreen) {

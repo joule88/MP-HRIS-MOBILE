@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../core/error_handler.dart';
 import '../../core/theme.dart';
@@ -89,7 +89,10 @@ class _PresensiMapScreenState extends State<PresensiMapScreen> {
     final currentLocation = attendanceProvider.currentLocation ?? _officeLocation;
 
     final distance = attendanceProvider.currentLocation != null
-        ? const Distance().as(LengthUnit.Meter, currentLocation, _officeLocation)
+        ? Geolocator.distanceBetween(
+            currentLocation.latitude, currentLocation.longitude,
+            _officeLocation.latitude, _officeLocation.longitude,
+          )
         : double.infinity;
 
     final isWithinRadius = attendanceProvider.currentLocation != null && distance <= _radius;
@@ -470,6 +473,32 @@ class _PresensiMapScreenState extends State<PresensiMapScreen> {
       }
     }
 
+    if (widget.type == 'masuk') {
+      final homeProvider = context.read<HomeProvider>();
+      final presensi = homeProvider.presensiToday;
+
+      if (presensi?.jadwalJamMasuk != null) {
+        try {
+          final now = DateTime.now();
+          final parts = presensi!.jadwalJamMasuk!.split(':');
+          final scheduled = DateTime(
+            now.year, now.month, now.day,
+            int.parse(parts[0]), int.parse(parts[1]),
+            parts.length > 2 ? int.parse(parts[2]) : 0
+          );
+
+          final batasToleransi = scheduled.add(const Duration(minutes: 10));
+
+          if (now.isAfter(batasToleransi)) {
+            _showLateCheckinDialog(context, isWithinRadius);
+            return;
+          }
+        } catch (e) {
+          print("Error parsing jadwalJamMasuk: $e");
+        }
+      }
+    }
+
     if (!isWithinRadius) {
       _showOutsideRadiusDialog(context);
     } else {
@@ -700,10 +729,136 @@ class _PresensiMapScreenState extends State<PresensiMapScreen> {
 
                       final attendanceProvider = context.read<AttendanceProvider>();
                       final distance = attendanceProvider.currentLocation != null
-                          ? const Distance().as(LengthUnit.Meter, attendanceProvider.currentLocation!, _officeLocation)
+                          ? Geolocator.distanceBetween(
+                              attendanceProvider.currentLocation!.latitude,
+                              attendanceProvider.currentLocation!.longitude,
+                              _officeLocation.latitude,
+                              _officeLocation.longitude,
+                            )
                           : double.infinity;
 
                       if (distance > _radius) {
+                        _showOutsideRadiusDialog(this.context);
+                      } else {
+                        _startFaceRecognitionFlow(this.context);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showLateCheckinDialog(BuildContext context, bool isWithinRadius) {
+    final reasonController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: AppTheme.bgLight,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(AppTheme.radiusXl),
+              topRight: Radius.circular(AppTheme.radiusXl),
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(
+                    color: AppTheme.textTertiary.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.statusRed.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.access_time_filled, color: AppTheme.statusRed),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      "Presensi Terlambat",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    )
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "Anda melakukan absen masuk melewati batas toleransi. Mohon sertakan alasan keterlambatan:",
+                style: AppTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: reasonController,
+                decoration: InputDecoration(
+                  hintText: "Contoh: Ban bocor di jalan",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                    borderSide: BorderSide(color: AppTheme.textTertiary.withOpacity(0.3)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                    borderSide: BorderSide(color: AppTheme.textTertiary.withOpacity(0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                    borderSide: const BorderSide(color: AppTheme.primaryBlue),
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.bgInput,
+                  contentPadding: const EdgeInsets.all(16),
+                ),
+                maxLines: 3,
+                maxLength: 500,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text("Batal", style: TextStyle(color: AppTheme.textSecondary)),
+                  ),
+                  const SizedBox(width: 12),
+                  CustomButton(
+                    text: "Lanjutkan",
+                    type: ButtonType.primary,
+                    backgroundColor: AppTheme.statusRed,
+                    isFullWidth: false,
+                    onPressed: () {
+                      final reason = reasonController.text.trim();
+                      if (reason.isEmpty) {
+                        ErrorHandler.showWarning('Alasan terlambat wajib diisi!');
+                        return;
+                      }
+
+                      context.read<AttendanceProvider>().setReasonLateCheckin(reason);
+                      Navigator.pop(context);
+
+                      if (!isWithinRadius) {
                         _showOutsideRadiusDialog(this.context);
                       } else {
                         _startFaceRecognitionFlow(this.context);
