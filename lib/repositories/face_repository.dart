@@ -1,15 +1,13 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../core/constants/api_url.dart';
 import '../core/cache_manager.dart';
 
 class FaceRepository {
   Future<Map<String, dynamic>> enrollFace({
-    required File fotoDepan,
-    required File fotoKanan,
-    required File fotoKiri,
-    required File fotoBawah,
+    required File videoFile,
   }) async {
     try {
       final token = CacheManager.authBox.get('auth_token');
@@ -24,25 +22,34 @@ class FaceRepository {
         'Accept': 'application/json',
       });
 
-      request.files.add(await http.MultipartFile.fromPath('foto_depan', fotoDepan.path));
-      request.files.add(await http.MultipartFile.fromPath('foto_kanan', fotoKanan.path));
-      request.files.add(await http.MultipartFile.fromPath('foto_kiri', fotoKiri.path));
-      request.files.add(await http.MultipartFile.fromPath('foto_bawah', fotoBawah.path));
+      request.files.add(await http.MultipartFile.fromPath(
+        'video_wajah',
+        videoFile.path,
+        contentType: MediaType('video', 'mp4'),
+      ));
 
-      var streamedResponse = await request.send();
+      var streamedResponse = await request.send().timeout(
+        const Duration(minutes: 3),
+      );
       var response = await http.Response.fromStream(streamedResponse);
 
+      final body = jsonDecode(response.body);
+
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return {'status': true, 'message': 'Pendaftaran wajah berhasil'};
+        return {
+          'status': true,
+          'message': body['message'] ?? 'Pendaftaran wajah berhasil',
+          'data': body['data'],
+        };
       } else {
-        throw Exception('Gagal mendaftarkan wajah: ${response.statusCode}');
+        throw Exception(body['message'] ?? 'Gagal mendaftarkan wajah: ${response.statusCode}');
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<Map<String, dynamic>> verifyFace(File imageFile) async {
+  Future<Map<String, dynamic>> verifyFace(File imageFile, {String tipe = 'presensi'}) async {
     final token = CacheManager.authBox.get('auth_token');
     var request = http.MultipartRequest(
       'POST',
@@ -55,6 +62,7 @@ class FaceRepository {
     });
 
     request.files.add(await http.MultipartFile.fromPath('foto', imageFile.path));
+    request.fields['tipe'] = tipe;
 
     var streamedResponse = await request.send();
     var response = await http.Response.fromStream(streamedResponse);

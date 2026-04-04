@@ -57,3 +57,18 @@ class InputImageFormatUtils {
     }
   }
 }
+
+class BrightnessUtils {
+  static double calculateBrightness(CameraImage image) {
+    final yPlane = image.planes[0];
+    final bytes = yPlane.bytes;
+
+    int sum = 0;
+    int count = 0;
+    for (int i = 0; i < bytes.length; i += 10) {
+      sum += bytes[i];
+      count++;
+    }
+    return count > 0 ? sum / count : 0.0;
+  }
+}

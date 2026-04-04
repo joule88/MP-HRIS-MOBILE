@@ -16,10 +16,11 @@ class ApiUrl {
     return _cachedImageBaseUrl!;
   }
 
-  static String get baseUrl => _cachedBaseUrl ?? dotenv.env['API_BASE_URL'] ?? 'http://192.168.1.4:8000/api';
+  static String get baseUrl => _cachedBaseUrl ?? dotenv.env['API_BASE_URL'] ?? 'http://10.10.4.20:8000/api';
   static String get imageBaseUrl => _cachedImageBaseUrl ?? baseUrl.replaceAll('/api', '/storage/');
 
   static Future<void> initialize() async {
+    await ApiConfigService.clearConfig();
     await getBaseUrl();
     await getImageBaseUrl();
   }

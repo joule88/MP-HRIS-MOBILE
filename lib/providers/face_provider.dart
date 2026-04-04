@@ -1,23 +1,16 @@
+import 'dart:async';
 import 'dart:io';
-import 'dart:ui' show Rect;
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import '../repositories/face_repository.dart';
 import '../core/utils/camera_utils.dart';
 
-enum EnrollmentStep { depan, kanan, kiri, bawah, selesai }
+enum VideoRecordingState { idle, recording, uploading, success, error }
 
-// Status feedback real-time ke UI untuk panduan user
-enum FaceStatus {
-  noFace,       // Tidak ada wajah terdeteksi
-  tooFar,       // Wajah terlalu jauh (kotak kecil)
-  tooClose,     // Wajah terlalu dekat (kotak besar)
-  outOfFrame,   // Wajah tidak di dalam area scan
-  wrongPose,    // Wajah ada & di frame, tapi pose salah
-  holding,      // Pose benar, sedang menghitung mundur
-  ready,        // Siap capture (internal, langsung ambil foto)
-}
+enum FaceDetectionStatus { noFace, detected }
+
+enum EnrollmentStep { front, right, left }
 
 class FaceProvider with ChangeNotifier {
   final FaceRepository _repository = FaceRepository();
@@ -26,63 +19,222 @@ class FaceProvider with ChangeNotifier {
       enableClassification: false,
       enableLandmarks: false,
       enableContours: false,
-      enableTracking: true,
-      performanceMode: FaceDetectorMode.accurate,
+      enableTracking: false,
+      performanceMode: FaceDetectorMode.fast,
     ),
   );
 
-  EnrollmentStep _currentStep = EnrollmentStep.depan;
-  bool _isProcessing = false;
-  bool _isUploading = false;
-  String _instructionText = "Hadapkan wajah lurus ke depan";
-  FaceStatus _faceStatus = FaceStatus.noFace;
+  VideoRecordingState _recordingState = VideoRecordingState.idle;
+  FaceDetectionStatus _faceDetectionStatus = FaceDetectionStatus.noFace;
+  File? _videoFile;
+  String _message = '';
+  String _errorMessage = '';
+  bool _isProcessingFrame = false;
 
-  // Hold timer: pose harus dipertahankan selama ini sebelum capture
-  static const int _holdDurationMs = 1500;
-  DateTime? _poseValidSince;
-  double _holdProgress = 0.0; // 0.0 - 1.0
+  // Guided enrollment
+  EnrollmentStep _currentStep = EnrollmentStep.front;
+  double _headEulerAngleY = 0.0;
+  bool _isPoseValid = false;
+  double _faceRatio = 0.0;
+  bool _isDistanceOk = false;
+  double _brightness = 0.0;
+  bool _isBrightnessOk = false;
+  double _stepProgress = 0.0;
+  Timer? _progressTimer;
 
-  File? _fotoDepan;
-  File? _fotoKanan;
-  File? _fotoKiri;
-  File? _fotoBawah;
+  static const double _frontDuration = 4.0;
+  static const double _sideDuration = 3.0;
+  static const double _tickInterval = 100;
+
+  VideoRecordingState get recordingState => _recordingState;
+  FaceDetectionStatus get faceDetectionStatus => _faceDetectionStatus;
+  String get message => _message;
+  String get errorMessage => _errorMessage;
+  bool get isFaceDetected =>
+      _faceDetectionStatus == FaceDetectionStatus.detected;
 
   EnrollmentStep get currentStep => _currentStep;
-  bool get isUploading => _isUploading;
-  String get instructionText => _instructionText;
-  FaceStatus get faceStatus => _faceStatus;
-  double get holdProgress => _holdProgress;
+  double get headEulerAngleY => _headEulerAngleY;
+  bool get isPoseValid => _isPoseValid;
+  double get faceRatio => _faceRatio;
+  bool get isDistanceOk => _isDistanceOk;
+  double get brightness => _brightness;
+  bool get isBrightnessOk => _isBrightnessOk;
+  double get stepProgress => _stepProgress;
+
+  bool get allChecksValid =>
+      isFaceDetected && _isPoseValid && _isDistanceOk && _isBrightnessOk;
+
+  String get qualityMessage {
+    if (!isFaceDetected) return 'Arahkan wajah ke dalam bingkai';
+    if (_faceRatio < 0.20) return 'Terlalu jauh, dekatkan wajah ke kamera';
+    if (_faceRatio > 0.70) return 'Terlalu dekat, mundur sedikit';
+    if (!_isBrightnessOk) return 'Pencahayaan kurang, cari tempat lebih terang';
+    if (!_isPoseValid) {
+      switch (_currentStep) {
+        case EnrollmentStep.front:
+          return 'Hadapkan wajah ke depan';
+        case EnrollmentStep.right:
+          return 'Toleh ke kanan';
+        case EnrollmentStep.left:
+          return 'Toleh ke kiri';
+      }
+    }
+    return '';
+  }
+
+  String get stepLabel {
+    switch (_currentStep) {
+      case EnrollmentStep.front:
+        return 'Hadap Depan';
+      case EnrollmentStep.right:
+        return 'Toleh Kanan';
+      case EnrollmentStep.left:
+        return 'Toleh Kiri';
+    }
+  }
 
   void reset() {
-    _currentStep = EnrollmentStep.depan;
-    _instructionText = "Hadapkan wajah lurus ke depan";
-    _fotoDepan = null;
-    _fotoKanan = null;
-    _fotoKiri = null;
-    _fotoBawah = null;
-    _isProcessing = false;
-    _isUploading = false;
-    _faceStatus = FaceStatus.noFace;
-    _poseValidSince = null;
-    _holdProgress = 0.0;
+    _recordingState = VideoRecordingState.idle;
+    _faceDetectionStatus = FaceDetectionStatus.noFace;
+    _videoFile = null;
+    _message = '';
+    _errorMessage = '';
+    _isProcessingFrame = false;
+    _currentStep = EnrollmentStep.front;
+    _headEulerAngleY = 0.0;
+    _isPoseValid = false;
+    _faceRatio = 0.0;
+    _isDistanceOk = false;
+    _brightness = 0.0;
+    _isBrightnessOk = false;
+    _stepProgress = 0.0;
+    _progressTimer?.cancel();
+    _progressTimer = null;
     notifyListeners();
   }
 
-  Future<void> processCameraImage(
-    CameraImage image,
-    CameraDescription camera,
-    InputImageRotation rotation, {
-    // Ukuran kotak scan dalam koordinat layar (0.0 - 1.0)
-    double scanBoxLeft = 0.125,
-    double scanBoxRight = 0.875,
-    double scanBoxTop = 0.275,
-    double scanBoxBottom = 0.725,
-  }) async {
-    if (_isProcessing || _currentStep == EnrollmentStep.selesai) return;
-
-    _isProcessing = true;
+  Future<void> startRecording(CameraController controller) async {
+    if (_recordingState == VideoRecordingState.recording) return;
 
     try {
+      await controller.startVideoRecording();
+      _recordingState = VideoRecordingState.recording;
+      _currentStep = EnrollmentStep.front;
+      _stepProgress = 0.0;
+      _message = 'Hadap Depan';
+      notifyListeners();
+
+      _startProgressTimer(controller);
+    } catch (e) {
+      _recordingState = VideoRecordingState.error;
+      _errorMessage = 'Gagal memulai rekaman: $e';
+      notifyListeners();
+    }
+  }
+
+  void _startProgressTimer(CameraController controller) {
+    _progressTimer?.cancel();
+    _progressTimer = Timer.periodic(
+      Duration(milliseconds: _tickInterval.toInt()),
+      (timer) {
+        if (_recordingState != VideoRecordingState.recording) {
+          timer.cancel();
+          return;
+        }
+
+        if (allChecksValid) {
+          final duration = _currentStep == EnrollmentStep.front
+              ? _frontDuration
+              : _sideDuration;
+          final increment = (_tickInterval / 1000) / duration;
+          _stepProgress += increment;
+        }
+
+        if (_stepProgress >= 1.0) {
+          _advanceStep(controller);
+        }
+
+        notifyListeners();
+      },
+    );
+  }
+
+  void _advanceStep(CameraController controller) {
+    switch (_currentStep) {
+      case EnrollmentStep.front:
+        _currentStep = EnrollmentStep.right;
+        _stepProgress = 0.0;
+        _isPoseValid = false;
+        _message = 'Toleh Kanan';
+        break;
+      case EnrollmentStep.right:
+        _currentStep = EnrollmentStep.left;
+        _stepProgress = 0.0;
+        _isPoseValid = false;
+        _message = 'Toleh Kiri';
+        break;
+      case EnrollmentStep.left:
+        _progressTimer?.cancel();
+        stopRecording(controller);
+        break;
+    }
+  }
+
+  Future<void> stopRecording(CameraController controller) async {
+    _progressTimer?.cancel();
+
+    if (!controller.value.isRecordingVideo) return;
+
+    try {
+      final XFile video = await controller.stopVideoRecording();
+      _videoFile = File(video.path);
+      _message = 'Rekaman selesai. Mengunggah...';
+      notifyListeners();
+
+      await submitVideo();
+    } catch (e) {
+      _recordingState = VideoRecordingState.error;
+      _errorMessage = 'Gagal menghentikan rekaman: $e';
+      notifyListeners();
+    }
+  }
+
+  Future<void> submitVideo() async {
+    if (_videoFile == null) {
+      _recordingState = VideoRecordingState.error;
+      _errorMessage = 'File video tidak ditemukan.';
+      notifyListeners();
+      return;
+    }
+
+    _recordingState = VideoRecordingState.uploading;
+    _message = 'Mengunggah & memproses video...';
+    notifyListeners();
+
+    try {
+      await _repository.enrollFace(videoFile: _videoFile!);
+      _recordingState = VideoRecordingState.success;
+      _message = 'Pendaftaran Wajah Berhasil!';
+    } catch (e) {
+      _recordingState = VideoRecordingState.error;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+    }
+    notifyListeners();
+  }
+
+  void processCameraImage(
+    CameraImage image,
+    CameraDescription camera,
+    InputImageRotation rotation,
+  ) async {
+    if (_isProcessingFrame) return;
+    _isProcessingFrame = true;
+
+    try {
+      _brightness = BrightnessUtils.calculateBrightness(image);
+      _isBrightnessOk = _brightness > 60;
+
       final inputImage = CameraUtils.inputImageFromCameraImage(
         image: image,
         camera: camera,
@@ -91,217 +243,40 @@ class FaceProvider with ChangeNotifier {
 
       final List<Face> faces = await _faceDetector.processImage(inputImage);
 
-      if (faces.isEmpty) {
-        _updateFaceStatus(FaceStatus.noFace);
-        _resetHoldTimer();
+      if (faces.isNotEmpty) {
+        final face = faces.first;
+        _faceDetectionStatus = FaceDetectionStatus.detected;
+
+        _headEulerAngleY = face.headEulerAngleY ?? 0.0;
+
+        final imageWidth = image.width.toDouble();
+        final box = face.boundingBox;
+        _faceRatio = box.width / imageWidth;
+        _isDistanceOk = _faceRatio >= 0.20 && _faceRatio <= 0.70;
+
+        switch (_currentStep) {
+          case EnrollmentStep.front:
+            _isPoseValid = _headEulerAngleY.abs() < 15;
+            break;
+          case EnrollmentStep.right:
+            _isPoseValid = _headEulerAngleY < -20;
+            break;
+          case EnrollmentStep.left:
+            _isPoseValid = _headEulerAngleY > 20;
+            break;
+        }
       } else {
-        final Face face = faces.first;
-        _validateAndCheckPose(face, image, scanBoxLeft, scanBoxRight, scanBoxTop, scanBoxBottom);
+        _faceDetectionStatus = FaceDetectionStatus.noFace;
+        _isPoseValid = false;
+        _isDistanceOk = false;
+        _faceRatio = 0.0;
       }
+
+      notifyListeners();
     } catch (e) {
       debugPrint("Error processing face: $e");
     } finally {
-      _isProcessing = false;
-    }
-  }
-
-  void _validateAndCheckPose(
-    Face face,
-    CameraImage image,
-    double boxLeft,
-    double boxRight,
-    double boxTop,
-    double boxBottom,
-  ) {
-    final imgW = image.width.toDouble();
-    final imgH = image.height.toDouble();
-
-    // Bounding box dari ML Kit (dalam koordinat gambar - KAMERA DEPAN MIRROR)
-    final Rect bb = face.boundingBox;
-
-    // Normalisasi ke 0.0 - 1.0
-    // Untuk kamera depan di Android, X perlu di-flip karena kamera mirror
-    final double faceLeft   = 1.0 - (bb.right / imgW);
-    final double faceRight  = 1.0 - (bb.left  / imgW);
-    final double faceTop    = bb.top    / imgH;
-    final double faceBottom = bb.bottom / imgH;
-
-    final double faceWidth  = faceRight - faceLeft;
-
-    // --- Validasi Jarak (ukuran wajah) ---
-    // Wajah ideal: lebarnya 35% - 65% dari lebar frame
-    const double minFaceRatio = 0.30;
-    const double maxFaceRatio = 0.70;
-
-    if (faceWidth < minFaceRatio) {
-      _updateFaceStatus(FaceStatus.tooFar);
-      _resetHoldTimer();
-      return;
-    }
-    if (faceWidth > maxFaceRatio) {
-      _updateFaceStatus(FaceStatus.tooClose);
-      _resetHoldTimer();
-      return;
-    }
-
-    // --- Validasi Posisi dalam Kotak Scan ---
-    // Center wajah harus berada di dalam kotak scan (dengan toleransi 10%)
-    final double faceCenterX = (faceLeft + faceRight) / 2;
-    final double faceCenterY = (faceTop + faceBottom) / 2;
-
-    const double tolerance = 0.10;
-    final bool inBox = faceCenterX >= (boxLeft - tolerance) &&
-        faceCenterX <= (boxRight + tolerance) &&
-        faceCenterY >= (boxTop - tolerance) &&
-        faceCenterY <= (boxBottom + tolerance);
-
-    if (!inBox) {
-      _updateFaceStatus(FaceStatus.outOfFrame);
-      _resetHoldTimer();
-      return;
-    }
-
-    // --- Validasi Pose ---
-    final bool isPoseValid = _isPoseValid(face);
-
-    if (!isPoseValid) {
-      _updateFaceStatus(FaceStatus.wrongPose);
-      _resetHoldTimer();
-      return;
-    }
-
-    // --- Pose valid: jalankan hold timer ---
-    _tickHoldTimer();
-  }
-
-  bool _isPoseValid(Face face) {
-    const double thresholdFront = 10.0;
-    const double thresholdSide  = 15.0;
-    const double thresholdDown  = 5.0;
-
-    final double? rotY = face.headEulerAngleY;
-    final double? rotX = face.headEulerAngleX;
-
-    if (rotY == null || rotX == null) return false;
-
-    switch (_currentStep) {
-      case EnrollmentStep.depan:
-        return rotY.abs() < thresholdFront && rotX.abs() < thresholdFront;
-      case EnrollmentStep.kanan:
-        return rotY < -thresholdSide;
-      case EnrollmentStep.kiri:
-        return rotY > thresholdSide;
-      case EnrollmentStep.bawah:
-        return rotX < -thresholdDown && rotY.abs() < thresholdFront;
-      default:
-        return false;
-    }
-  }
-
-  void _tickHoldTimer() {
-    final now = DateTime.now();
-
-    if (_poseValidSince == null) {
-      _poseValidSince = now;
-    }
-
-    final elapsed = now.difference(_poseValidSince!).inMilliseconds;
-    _holdProgress = (elapsed / _holdDurationMs).clamp(0.0, 1.0);
-
-    _updateFaceStatus(FaceStatus.holding);
-
-    if (elapsed >= _holdDurationMs) {
-      // Capture!
-      _poseValidSince = null;
-      _holdProgress = 0.0;
-      _captureImage();
-    }
-  }
-
-  void _resetHoldTimer() {
-    if (_poseValidSince != null || _holdProgress > 0) {
-      _poseValidSince = null;
-      _holdProgress = 0.0;
-      notifyListeners();
-    }
-  }
-
-  void _updateFaceStatus(FaceStatus status) {
-    if (_faceStatus != status) {
-      _faceStatus = status;
-      notifyListeners();
-    }
-  }
-
-  void _captureImage() {
-    _isProcessing = true;
-
-    if (_currentStep == EnrollmentStep.depan) {
-      _currentStep = EnrollmentStep.kanan;
-      _instructionText = "Putar wajah perlahan ke KANAN";
-    } else if (_currentStep == EnrollmentStep.kanan) {
-      _currentStep = EnrollmentStep.kiri;
-      _instructionText = "Putar wajah perlahan ke KIRI";
-    } else if (_currentStep == EnrollmentStep.kiri) {
-      _currentStep = EnrollmentStep.bawah;
-      _instructionText = "Tundukkan kepala ke BAWAH";
-    } else if (_currentStep == EnrollmentStep.bawah) {
-      _currentStep = EnrollmentStep.selesai;
-      _instructionText = "Data lengkap. Mengunggah...";
-    }
-
-    _faceStatus = FaceStatus.noFace;
-    notifyListeners();
-
-    // Cooldown setelah capture agar tidak langsung re-trigger
-    Future.delayed(const Duration(milliseconds: 800), () {
-      _isProcessing = false;
-    });
-  }
-
-  void saveCapturedFile(File file) {
-    if (_fotoDepan == null) {
-      _fotoDepan = file;
-    } else if (_fotoKanan == null) {
-      _fotoKanan = file;
-    } else if (_fotoKiri == null) {
-      _fotoKiri = file;
-    } else if (_fotoBawah == null) {
-      _fotoBawah = file;
-      if (_currentStep == EnrollmentStep.selesai) {
-        submitEnrollment();
-      }
-    }
-  }
-
-  Future<void> submitEnrollment() async {
-    if (_fotoDepan == null || _fotoKanan == null || _fotoKiri == null || _fotoBawah == null) {
-      _instructionText = "Gagal: Foto tidak lengkap.";
-      notifyListeners();
-      return;
-    }
-
-    _isUploading = true;
-    notifyListeners();
-
-    try {
-      await _repository.enrollFace(
-        fotoDepan: _fotoDepan!,
-        fotoKanan: _fotoKanan!,
-        fotoKiri: _fotoKiri!,
-        fotoBawah: _fotoBawah!,
-      );
-      _instructionText = "Pendaftaran Berhasil!";
-    } catch (e) {
-      _instructionText = "Gagal Upload: ${e.toString()}";
-      _currentStep = EnrollmentStep.depan;
-      _fotoDepan = null;
-      _fotoKanan = null;
-      _fotoKiri = null;
-      _fotoBawah = null;
-    } finally {
-      _isUploading = false;
-      notifyListeners();
+      _isProcessingFrame = false;
     }
   }
 
@@ -320,6 +295,7 @@ class FaceProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    _progressTimer?.cancel();
     _faceDetector.close();
     super.dispose();
   }

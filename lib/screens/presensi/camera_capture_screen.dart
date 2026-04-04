@@ -3,7 +3,9 @@ import 'dart:ui';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import '../../core/theme.dart';
+import '../../core/utils/camera_utils.dart';
 import '../../widgets/atoms/custom_button.dart';
 import '../../widgets/atoms/scanner_overlay.dart';
 
@@ -16,48 +18,127 @@ class CameraCaptureScreen extends StatefulWidget {
 
 class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
   CameraController? _controller;
-  Future<void>? _initializeControllerFuture;
+  CameraDescription? _frontCamera;
   XFile? _capturedImage;
   bool _isCameraInitialized = false;
+  bool _isProcessingFrame = false;
+
+  // Quality gate
+  bool _isFaceDetected = false;
+  bool _isDistanceOk = false;
+  bool _isBrightnessOk = false;
+  double _faceRatio = 0.0;
+  double _brightness = 0.0;
+
+  late FaceDetector _faceDetector;
+
+  bool get _allChecksValid =>
+      _isFaceDetected && _isDistanceOk && _isBrightnessOk;
+
+  String get _qualityMessage {
+    if (!_isFaceDetected) return 'Arahkan wajah ke dalam bingkai';
+    if (_faceRatio < 0.20) return 'Terlalu jauh, dekatkan wajah';
+    if (_faceRatio > 0.70) return 'Terlalu dekat, mundur sedikit';
+    if (!_isBrightnessOk) return 'Pencahayaan kurang terang';
+    return 'Siap — ambil foto';
+  }
 
   @override
   void initState() {
     super.initState();
+    _faceDetector = FaceDetector(
+      options: FaceDetectorOptions(
+        enableClassification: false,
+        enableLandmarks: false,
+        enableContours: false,
+        enableTracking: false,
+        performanceMode: FaceDetectorMode.fast,
+      ),
+    );
     _initializeCamera();
   }
 
   Future<void> _initializeCamera() async {
     final cameras = await availableCameras();
-    final firstCamera = cameras.firstWhere(
+    _frontCamera = cameras.firstWhere(
       (camera) => camera.lensDirection == CameraLensDirection.front,
       orElse: () => cameras.first,
     );
 
     _controller = CameraController(
-      firstCamera,
+      _frontCamera!,
       ResolutionPreset.medium,
       enableAudio: false,
+      imageFormatGroup: Platform.isAndroid
+          ? ImageFormatGroup.nv21
+          : ImageFormatGroup.bgra8888,
     );
 
-    _initializeControllerFuture = _controller!.initialize();
-    await _initializeControllerFuture;
+    await _controller!.initialize();
 
-    if (mounted) {
-      setState(() {
-        _isCameraInitialized = true;
-      });
+    if (!mounted) return;
+
+    _controller!.startImageStream((CameraImage image) {
+      if (!mounted || _capturedImage != null) return;
+      _processFrame(image);
+    });
+
+    setState(() {
+      _isCameraInitialized = true;
+    });
+  }
+
+  void _processFrame(CameraImage image) async {
+    if (_isProcessingFrame) return;
+    _isProcessingFrame = true;
+
+    try {
+      _brightness = BrightnessUtils.calculateBrightness(image);
+      _isBrightnessOk = _brightness > 60;
+
+      final inputImage = CameraUtils.inputImageFromCameraImage(
+        image: image,
+        camera: _frontCamera!,
+        rotation: CameraUtils.rotationIntToImageRotation(
+            _frontCamera!.sensorOrientation),
+      );
+
+      final faces = await _faceDetector.processImage(inputImage);
+
+      if (faces.isNotEmpty) {
+        final face = faces.first;
+        final imageWidth = image.width.toDouble();
+        _faceRatio = face.boundingBox.width / imageWidth;
+        _isFaceDetected = true;
+        _isDistanceOk = _faceRatio >= 0.20 && _faceRatio <= 0.70;
+      } else {
+        _isFaceDetected = false;
+        _isDistanceOk = false;
+        _faceRatio = 0.0;
+      }
+
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint("Error processing frame: $e");
+    } finally {
+      _isProcessingFrame = false;
     }
   }
 
   @override
   void dispose() {
     _controller?.dispose();
+    _faceDetector.close();
     super.dispose();
   }
 
   Future<void> _takePicture() async {
+    if (!_allChecksValid) return;
     try {
-      await _initializeControllerFuture;
+      try {
+        await _controller!.stopImageStream();
+      } catch (_) {}
+
       final image = await _controller!.takePicture();
       HapticFeedback.lightImpact();
       if (!mounted) return;
@@ -66,13 +147,21 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
         _capturedImage = image;
       });
     } catch (e) {
-      print(e);
+      debugPrint("Error taking picture: $e");
     }
   }
 
   void _retakePicture() {
     setState(() {
       _capturedImage = null;
+      _isFaceDetected = false;
+      _isDistanceOk = false;
+      _isBrightnessOk = false;
+    });
+
+    _controller!.startImageStream((CameraImage image) {
+      if (!mounted || _capturedImage != null) return;
+      _processFrame(image);
     });
   }
 
@@ -109,17 +198,20 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
               child: FittedBox(
                 fit: BoxFit.cover,
                 child: SizedBox(
-                  width: _controller!.value.previewSize?.height ?? MediaQuery.of(context).size.width,
-                  height: _controller!.value.previewSize?.width ?? MediaQuery.of(context).size.height,
+                  width: _controller!.value.previewSize?.height ??
+                      MediaQuery.of(context).size.width,
+                  height: _controller!.value.previewSize?.width ??
+                      MediaQuery.of(context).size.height,
                   child: CameraPreview(_controller!),
                 ),
               ),
             )
           else
-            const Center(child: CircularProgressIndicator(color: Colors.white)),
-            
+            const Center(
+                child: CircularProgressIndicator(color: Colors.white)),
+
           if (_capturedImage != null)
-             SizedBox.expand(
+            SizedBox.expand(
               child: Image.file(
                 File(_capturedImage!.path),
                 fit: BoxFit.cover,
@@ -127,8 +219,14 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
             ),
 
           ScannerOverlay(
-            borderColor: _capturedImage != null ? AppTheme.statusGreen : AppTheme.primaryBlue,
-            isScanning: _capturedImage == null, 
+            borderColor: _capturedImage != null
+                ? AppTheme.statusGreen
+                : _allChecksValid
+                    ? AppTheme.statusGreen
+                    : _isFaceDetected
+                        ? AppTheme.statusYellow
+                        : AppTheme.primaryBlue,
+            isScanning: _capturedImage == null,
           ),
 
           Positioned(
@@ -147,25 +245,47 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withOpacity(0.3)),
+                        border: Border.all(
+                            color: Colors.white.withOpacity(0.3)),
                       ),
                       child: Text(
                         _capturedImage != null
                             ? "Foto berhasil diambil ✓"
-                            : "Posisikan wajah di dalam bingkai",
+                            : _qualityMessage,
                         textAlign: TextAlign.center,
                         style: AppTheme.bodyLarge.copyWith(
-                          color: _capturedImage != null ? AppTheme.statusGreen : Colors.white,
+                          color: _capturedImage != null
+                              ? AppTheme.statusGreen
+                              : _allChecksValid
+                                  ? AppTheme.statusGreen
+                                  : Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                   ),
                 ),
+
+                // Quality chips (saat belum capture)
+                if (_capturedImage == null) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildChip(Icons.face, 'Wajah', _isFaceDetected),
+                      const SizedBox(width: 6),
+                      _buildChip(Icons.straighten, 'Jarak', _isDistanceOk),
+                      const SizedBox(width: 6),
+                      _buildChip(
+                          Icons.wb_sunny_outlined, 'Cahaya', _isBrightnessOk),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -200,32 +320,65 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
                   )
                 : Center(
                     child: GestureDetector(
-                      onTap: _takePicture,
+                      onTap: _allChecksValid ? _takePicture : null,
                       child: Container(
                         width: 76,
                         height: 76,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white.withOpacity(0.8), width: 6),
-                          color: Colors.white.withOpacity(0.2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 10,
-                            )
-                          ]
+                          border: Border.all(
+                            color: _allChecksValid
+                                ? Colors.white.withOpacity(0.8)
+                                : Colors.white.withOpacity(0.3),
+                            width: 6,
+                          ),
+                          color: _allChecksValid
+                              ? Colors.white.withOpacity(0.2)
+                              : Colors.white.withOpacity(0.05),
+                          boxShadow: _allChecksValid
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 10,
+                                  )
+                                ]
+                              : null,
                         ),
                         child: Container(
                           margin: const EdgeInsets.all(6),
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white,
+                            color: _allChecksValid
+                                ? Colors.white
+                                : Colors.white.withOpacity(0.3),
                           ),
                         ),
                       ),
                     ),
                   ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChip(IconData icon, String label, bool isOk) {
+    final color = isOk ? AppTheme.statusGreen : Colors.white.withOpacity(0.4);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(isOk ? Icons.check_circle : icon, color: color, size: 12),
+          const SizedBox(width: 4),
+          Text(label,
+              style: TextStyle(
+                  color: color, fontSize: 10, fontWeight: FontWeight.w600)),
         ],
       ),
     );

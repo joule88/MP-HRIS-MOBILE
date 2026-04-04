@@ -965,10 +965,10 @@ class _PresensiMapScreenState extends State<PresensiMapScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(message, style: AppTheme.bodyMedium),
-            if (confidence != null && confidence < 900) ...[
+            if (confidence != null && confidence < 1.0) ...[
               const SizedBox(height: 12),
               Text(
-                "Jarak LBPH: ${confidence.toStringAsFixed(1)}",
+                "Confidence: ${(confidence * 100).toStringAsFixed(1)}%",
                 style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondary),
               ),
             ],
